@@ -83,7 +83,7 @@ mkt maquina_htb
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/TU_USUARIO/dotfiles.git ~/dotfiles
+git clone https://github.com/iHakiu/Parrot-with-steroids.git ~/dotfiles
 cd ~/dotfiles
 ```
 
