@@ -460,6 +460,14 @@ main() {
     check_parrot
 
     echo ""
+    echo -e "${YELLOW}╔══════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║  ⚠️  AVISO IMPORTANTE - PARROT OS            ║${NC}"
+    echo -e "${YELLOW}║  Nunca uses:  sudo apt upgrade               ║${NC}"
+    echo -e "${YELLOW}║  Usa siempre: sudo parrot-upgrade            ║${NC}"
+    echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"
+    echo ""
+    sleep 2
+
     read -p "$(echo -e ${YELLOW}¿Hacer backup de configs existentes? [S/n]: ${NC})" -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Nn]$ ]] && backup_configs
