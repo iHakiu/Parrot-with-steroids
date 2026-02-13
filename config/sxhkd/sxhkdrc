@@ -1,0 +1,133 @@
+# atajos independientes del gestor de ventanas
+#
+
+# emulador de terminal
+super + Return
+	/opt/kitty/bin/kitty
+
+# lanzador de programas
+super + d
+	/usr/bin/rofi -show run
+
+# recargar la configuración de sxhkd
+super + Escape
+	pkill -USR1 -x sxhkd
+
+#
+# atajos de bspwm
+#
+
+# salir/reiniciar bspwm
+super + alt + {q,r}
+	bspc {quit,wm -r}
+
+# cerrar y matar ventana
+super + {_,shift + }w
+	bspc node -{c,k}
+
+# cerrar ventana (alternativo)
+super + q
+	bspc node -c
+
+# alternar entre diseño en mosaico y monocle
+super + m
+	bspc desktop -l next
+
+# enviar el nodo marcado más reciente al nodo preseleccionado más reciente
+super + y
+	bspc node newest.marked.local -n newest.!automatic.local
+
+# intercambiar el nodo actual con la ventana más grande
+super + g
+	bspc node -s biggest.window
+
+#
+# estado/banderas
+#
+
+# establecer el estado de la ventana
+super + {t,shift + t,s,f}
+	bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
+
+# establecer las banderas del nodo
+super + ctrl + {m,x,y,z}
+	bspc node -g {marked,locked,sticky,private}
+
+#
+# foco/intercambio
+#
+
+# enfocar el nodo en la dirección dada
+super + {_,shift + }{h,j,k,l}
+	bspc node -{f,s} {west,south,north,east}
+
+# enfocar el nodo para el salto de ruta dado
+super + {p,b,comma,period}
+	bspc node -f @{parent,brother,first,second}
+
+# enfocar la siguiente/anterior ventana en el escritorio actual
+super + {_,shift + }c
+	bspc node -f {next,prev}.local.!hidden.window
+
+# enfocar el escritorio siguiente/anterior en el monitor actual
+super + bracket{left,right}
+	bspc desktop -f {prev,next}.local
+
+# enfocar el último nodo/escritorio
+super + {grave,Tab}
+	bspc {node,desktop} -f last
+
+# enfocar el nodo más antiguo o más nuevo en el historial de foco
+super + {o,i}
+	bspc wm -h off; \
+	bspc node {older,newer} -f; \
+	bspc wm -h on
+
+# enfocar o enviar al escritorio dado
+super + {_,shift + }{1-9,0}
+	bspc {desktop -f,node -d} '^{1-9,10}'
+
+#
+# preselección
+#
+
+# preseleccionar la dirección
+super + ctrl + {Left,Down,Up,Right}
+	bspc node -p {west,south,north,east}
+
+# preseleccionar la proporción
+super + ctrl + {1-9}
+	bspc node -o 0.{1-9}
+
+# cancelar la preselección para el nodo enfocado
+super + ctrl + space
+	bspc node -p cancel
+
+# cancelar la preselección para el escritorio enfocado
+super + ctrl + shift + space
+	bspc query -N -d | xargs -I id -n 1 bspc node id -p cancel
+
+# ajustar tamaño del preselector
+super + ctrl + alt + {Left,Down,Up,Right}
+	bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0}
+
+#
+# mover/redimensionar
+#
+
+# mover una ventana flotante
+super + {Left,Down,Up,Right}
+	bspc node -v {-20 0,0 20,0 -20,20 0}
+
+# redimensionar ventana
+super + alt + {Left,Down,Up,Right}
+	bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0} || \
+	bspc node -z {right -20 0,top 0 20,bottom 0 -20,left 20 0}
+
+#
+# seguridad
+#
+
+# bloquear pantalla
+super + shift + x
+	/usr/bin/i3lock-fancy

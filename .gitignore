@@ -1,0 +1,44 @@
+# Archivos de backup
+*~
+*.swp
+*.swo
+*_backup
+*.bak
+
+# Archivos temporales
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Archivos de configuración local
+.env
+.env.local
+
+# Node modules (si usas alguna tool de JS)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+
+# Archivos personales que no quieres compartir
+personal_notes.md
+secrets/
+
+# No ignorar archivos importantes
+!config/**/*
+!scripts/**/*
+!wallpapers/**/*
