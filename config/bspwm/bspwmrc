@@ -1,25 +1,55 @@
-#! /bin/sh
+#!/bin/bash
+# ~/.config/bspwm/bspwmrc
+# Script de inicio de BSPWM — se ejecuta cada vez que arranca o se reinicia el WM
 
+# ─── Workspaces ───────────────────────────────────────────────────────────────
+# Crea 9 workspaces en el monitor principal
+# bspc monitor -d define cuántos "escritorios" tiene el monitor
+# Los números 1-9 son las etiquetas que veremos en Polybar más adelante
+bspc monitor -d 1 2 3 4 5 6 7 8 9
+
+# ─── Comportamiento general ───────────────────────────────────────────────────
+bspc config border_width         0      # grosor del borde de ventanas en píxeles
+bspc config window_gap           15      # espacio entre ventanas y bordes de pantalla
+bspc config top_padding 50      # espacio superior para que se vea la polybar
+bspc config split_ratio          0.50   # al abrir ventana nueva, divide 50% / 50%
+
+# En modo monocle (una ventana ocupa toda la pantalla):
+bspc config borderless_monocle   false   # quita los bordes — ocupa más espacio útil
+bspc config gapless_monocle      false   # quita los gaps — ocupa toda la pantalla
+
+# ─── Colores de bordes ────────────────────────────────────────────────────────
+# Los colores deben coincidir con la paleta general del entorno
+bspc config normal_border_color  "#1e2030"   # ventana sin foco — casi invisible
+bspc config active_border_color  "#82aaff"   # ventana activa en otro monitor
+bspc config focused_border_color "#89dceb"   # ventana con foco — cian visible
+
+# ─── Reglas de ventanas ───────────────────────────────────────────────────────
+# Algunas apps no tienen sentido en modo tiling — las ponemos flotantes por defecto
+# Sintaxis: bspc rule -a <NombreClase> <opciones>
+# Para saber la clase de una ventana: xprop | grep WM_CLASS  (clic en la ventana)
+bspc rule -a Pavucontrol         state=floating   # mezclador de audio
+bspc rule -a Nm-connection-editor state=floating  # gestor de red
+bspc rule -a feh                 state=floating   # visor de imágenes
+
+# Esto fuerza a las barras a estar siempre visibles, encima de todo y fijas
+bspc rule -a Polybar state=floating sticky=on layer=above border=off focus=off locked=on
+
+# ─── Programas de inicio ──────────────────────────────────────────────────────
+# IMPORTANTE: el & al final lanza el proceso en segundo plano
+# Si no ponemos &, bspwmrc se bloquearía esperando a que termine el proceso
+
+# Lanzar sxhkd solo si no está ya corriendo (evita duplicados al reiniciar bspwm)
 pgrep -x sxhkd > /dev/null || sxhkd &
 
-bspc monitor -d I II III IV V VI VII VIII IX X
+# Wallpaper (feh se instalará en Fase 7, de momento comentado)
+feh --bg-scale ~/.config/bspwm/wallpaper.jpg &
 
-bspc config border_width         2
-bspc config window_gap          12
+# Compositor 
+picom --config ~/.config/picom/picom.conf -b  &
 
-bspc config split_ratio          0.52
-bspc config borderless_monocle   true
-bspc config gapless_monocle      true
+# Barra (se configurará en Fase 4, de momento comentado)
+$HOME/.config/polybar/launch.sh &
 
-bspc rule -a Gimp desktop='^8' state=floating follow=on
-bspc rule -a Chromium desktop='^2'
-bspc rule -a mplayer2 state=floating
-bspc rule -a Kupfer.py focus=on
-bspc rule -a Screenkey manage=off
-
+# Iniciar agente VMware
 vmware-user-suid-wrapper &
-
-/usr/bin/feh --bg-fill /home/user/fondos/preview.jpg &
-~/.config/polybar/./launch.sh
-picom &
-bspc config border_width 0

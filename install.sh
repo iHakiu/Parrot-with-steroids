@@ -1,510 +1,658 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  install.sh — Instalador de entorno BSPWM Pentesting para Parrot OS        ║
+# ║  Uso: git clone <repo> ~/Dotfiles && cd ~/Dotfiles && ./install.sh         ║
+# ║  Flags: --skip-update  salta la actualización del sistema                  ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
 
-#####################################
-# Dotfiles Auto-Installer
-# Compatible with Parrot OS
-# v3.0 - Robusto, sin symlinks, portable
-#####################################
+set -euo pipefail
 
-# Colores
+# ─── Variables globales ──────────────────────────────────────────────────────
+DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
+FONT_VERSION="v3.3.0"
+SKIP_UPDATE=false
+
+# Parsear flags
+for arg in "$@"; do
+    case "$arg" in
+        --skip-update) SKIP_UPDATE=true ;;
+    esac
+done
+
+# ─── Colores ─────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
-# Rutas base (siempre relativas al script, funciona con cualquier usuario)
-DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CURRENT_USER="$(whoami)"
-USER_HOME="$HOME"
+# ─── Funciones de log ────────────────────────────────────────────────────────
+log_info()  { echo -e "${BLUE}[→]${NC} $1"; }
+log_ok()    { echo -e "${GREEN}[✓]${NC} $1"; }
+log_warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
+log_error() { echo -e "${RED}[✗]${NC} $1"; }
+log_section() { echo -e "\n${CYAN}${BOLD}═══ $1 ═══${NC}\n"; }
 
-# Log de instalación
-LOG_FILE="/tmp/dotfiles_install_$(date +%Y%m%d_%H%M%S).log"
+# ─── Trap para errores ───────────────────────────────────────────────────────
+cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo ""
+        log_error "La instalación falló en la línea $BASH_LINENO con código $exit_code"
+        log_error "Revisa el error de arriba. El script es re-ejecutable: corrígelo y vuelve a lanzar."
+    fi
+}
+trap cleanup EXIT
 
-# Helpers
-print_message() { echo -e "${BLUE}[*]${NC} $1" | tee -a "$LOG_FILE"; }
-print_success() { echo -e "${GREEN}[✓]${NC} $1" | tee -a "$LOG_FILE"; }
-print_error()   { echo -e "${RED}[✗]${NC} $1" | tee -a "$LOG_FILE"; }
-print_warning() { echo -e "${YELLOW}[!]${NC} $1" | tee -a "$LOG_FILE"; }
-
-# ─────────────────────────────────────────
-# Bloquear ejecución como root
-# ─────────────────────────────────────────
-check_not_root() {
-    if [ "$EUID" -eq 0 ]; then
-        print_error "No ejecutes este script como root o con sudo."
-        print_error "Ejecútalo como tu usuario normal: ./install.sh"
-        exit 1
+# ─── Backup de archivos existentes ───────────────────────────────────────────
+backup_if_exists() {
+    local target="$1"
+    if [ -f "$target" ]; then
+        local backup="${target}.bak.$(date +%Y%m%d_%H%M%S)"
+        cp "$target" "$backup"
+        log_warn "Backup: $target → $(basename $backup)"
     fi
 }
 
-# ─────────────────────────────────────────
-# Verificar conexión a internet
-# ─────────────────────────────────────────
-check_internet() {
-    print_message "Verificando conexión a internet..."
-    if ! curl -s --max-time 5 https://github.com > /dev/null 2>&1; then
-        print_error "Sin conexión a internet. El instalador necesita descargar paquetes."
-        exit 1
-    fi
-    print_success "Conexión a internet OK"
-}
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 0 — Validaciones previas
+# ══════════════════════════════════════════════════════════════════════════════
 
-# ─────────────────────────────────────────
-# Verificar Parrot OS
-# ─────────────────────────────────────────
-check_parrot() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        if [[ "$ID" == "parrot" ]]; then
-            print_success "Parrot OS detectado (usuario: $CURRENT_USER)"
-            return 0
-        fi
-    fi
-    print_warning "No se detectó Parrot OS."
-    read -p "¿Deseas continuar igualmente? (s/n): " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Ss]$ ]] && exit 1
-}
+log_section "VALIDACIONES"
 
-# ─────────────────────────────────────────
-# Backup de configuraciones existentes
-# ─────────────────────────────────────────
-backup_configs() {
-    print_message "Creando backup de configuraciones existentes..."
-    BACKUP_DIR="$USER_HOME/dotfiles_backup_$(date +%Y%m%d_%H%M%S)"
-    mkdir -p "$BACKUP_DIR"
+# No ejecutar como root
+if [ "$(id -u)" -eq 0 ]; then
+    log_error "No ejecutar como root. Usa: ./install.sh"
+    log_error "El script pide sudo solo cuando lo necesita."
+    exit 1
+fi
 
-    [ -f "$USER_HOME/.zshrc" ]    && cp "$USER_HOME/.zshrc"    "$BACKUP_DIR/"
-    [ -f "$USER_HOME/.p10k.zsh" ] && cp "$USER_HOME/.p10k.zsh" "$BACKUP_DIR/"
+# Verificar que estamos en el directorio del repo
+if [ ! -d "$DOTFILES_DIR/config/bspwm" ] || [ ! -d "$DOTFILES_DIR/scripts" ]; then
+    log_error "Ejecuta este script desde la raíz del repo Dotfiles/"
+    log_error "Directorio actual: $DOTFILES_DIR"
+    exit 1
+fi
 
-    for dir in bspwm sxhkd polybar picom rofi kitty nvim; do
-        [ -d "$USER_HOME/.config/$dir" ] && cp -r "$USER_HOME/.config/$dir" "$BACKUP_DIR/"
+# Verificar que es Debian/Parrot
+if ! command -v apt &>/dev/null; then
+    log_error "Este script requiere apt (Parrot/Debian)"
+    exit 1
+fi
+
+log_ok "Ejecutando como: $USER"
+log_ok "Home: $HOME"
+log_ok "Repo: $DOTFILES_DIR"
+
+# ─── Resumen y confirmación ──────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}Se va a instalar:${NC}"
+echo "  • 40+ paquetes apt (bspwm, sxhkd, picom, polybar, rofi, kitty, zsh...)"
+echo "  • i3lock-color (compilado desde source)"
+echo "  • betterlockscreen (desde GitHub)"
+echo "  • Hack Nerd Font $FONT_VERSION"
+echo "  • Oh-My-Zsh + Powerlevel10k + plugins"
+echo "  • Configs copiados a ~/ y /root/"
+if [ "$SKIP_UPDATE" = true ]; then
+    echo -e "  • ${YELLOW}Actualización del sistema: SALTADA (--skip-update)${NC}"
+fi
+echo ""
+read -rp "¿Continuar? [s/N]: " confirm
+if [[ ! "$confirm" =~ ^[sS]$ ]]; then
+    log_warn "Instalación cancelada."
+    exit 0
+fi
+
+# Cachear sudo
+sudo -v
+# Mantener sudo vivo durante la instalación
+while true; do sudo -n true; sleep 60; kill -0 "$$" 2>/dev/null || exit; done &
+SUDO_KEEPALIVE_PID=$!
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 1 — Actualización del sistema
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 1/10 — Actualización del sistema"
+
+if [ "$SKIP_UPDATE" = true ]; then
+    log_warn "Saltando actualización (--skip-update)"
+else
+    log_info "Actualizando sistema (esto puede tardar)..."
+    sudo apt update -y
+    sudo parrot-upgrade -y || sudo apt upgrade -y
+    log_ok "Sistema actualizado"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 2 — Paquetes apt
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 2/10 — Paquetes apt"
+
+PACKAGES=(
+    # Core WM
+    bspwm sxhkd picom polybar rofi feh xterm
+    # Shell
+    zsh
+    # CLI tools
+    lsd bat fzf xclip scrot
+    # Sistema
+    net-tools psmisc xorg x11-xserver-utils xdg-utils
+    # Iconos y fuentes
+    papirus-icon-theme fonts-font-awesome
+    # betterlockscreen runtime deps
+    imagemagick bc x11-utils
+    # Compilación i3lock-color
+    build-essential git curl wget autoconf pkg-config
+    libxcb-util0-dev libxcb-ewmh-dev libxcb-randr0-dev libxcb-icccm4-dev
+    libxcb-keysyms1-dev libxcb-xinerama0-dev libxcb-xtest0-dev
+    libxcb-shape0-dev libxcb1-dev
+    libx11-dev libxcomposite-dev libxfixes-dev libxdamage-dev
+    libxrender-dev libxrandr-dev libxext-dev
+    libpam0g-dev libcairo2-dev libfontconfig1-dev
+    libxcb-composite0-dev libev-dev libx11-xcb-dev libxcb-xkb-dev
+    libxcb-image0-dev libxcb-util-dev libxcb-xrm-dev
+    libxkbcommon-dev libxkbcommon-x11-dev
+    libjpeg-dev libgif-dev
+)
+
+log_info "Instalando ${#PACKAGES[@]} paquetes..."
+sudo apt install -y "${PACKAGES[@]}"
+log_ok "Paquetes instalados"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 3 — Compilar i3lock-color
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 3/10 — i3lock-color"
+
+# Check: si i3lock existe y NO es del paquete apt, es nuestro i3lock-color compilado
+if command -v i3lock &>/dev/null && ! dpkg -l i3lock 2>/dev/null | grep -q "^ii"; then
+    log_ok "i3lock-color ya instalado (compilado desde source)"
+else
+    log_info "Eliminando i3lock estándar si existe..."
+    sudo apt remove -y i3lock 2>/dev/null || true
+
+    log_info "Compilando i3lock-color desde source..."
+    cd /tmp
+    sudo rm -rf i3lock-color
+    git clone https://github.com/Raymo111/i3lock-color.git
+    cd i3lock-color
+    ./build.sh
+    sudo ./install-i3lock-color.sh
+    cd "$DOTFILES_DIR"
+
+    log_ok "i3lock-color compilado e instalado"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 4 — betterlockscreen
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 4/10 — betterlockscreen"
+
+if command -v betterlockscreen &>/dev/null; then
+    log_ok "betterlockscreen ya instalado: $(betterlockscreen --version 2>&1 | head -1)"
+else
+    log_info "Instalando betterlockscreen desde GitHub..."
+    cd /tmp
+    rm -rf betterlockscreen
+    git clone https://github.com/betterlockscreen/betterlockscreen.git
+    cd betterlockscreen
+    sudo cp betterlockscreen /usr/local/bin/
+    sudo chmod +x /usr/local/bin/betterlockscreen
+    cd "$DOTFILES_DIR"
+
+    log_ok "betterlockscreen instalado"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 5 — Hack Nerd Font
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 5/10 — Hack Nerd Font"
+
+FONT_DIR_USER="$HOME/.local/share/fonts/HackNerdFont"
+FONT_DIR_ROOT="/root/.local/share/fonts/HackNerdFont"
+
+if fc-list | grep -qi "Hack Nerd Font" && [ -d "$FONT_DIR_USER" ]; then
+    log_ok "Hack Nerd Font ya instalada"
+else
+    log_info "Descargando Hack Nerd Font ${FONT_VERSION}..."
+    cd /tmp
+    rm -rf hack_font Hack.zip
+    wget -q --show-progress \
+        "https://github.com/ryanoasis/nerd-fonts/releases/download/${FONT_VERSION}/Hack.zip" \
+        -O Hack.zip
+    mkdir -p hack_font && cd hack_font
+    unzip -oq ../Hack.zip
+
+    # Eliminar variantes Mono y Propo — solo queremos Regular
+    rm -f HackNerdFontMono-* HackNerdFontPropo-*
+
+    # Instalar para usuario
+    log_info "Instalando fuentes para $USER..."
+    mkdir -p "$FONT_DIR_USER"
+    cp HackNerdFont-*.ttf "$FONT_DIR_USER/"
+
+    # Instalar para root
+    log_info "Instalando fuentes para root..."
+    sudo mkdir -p "$FONT_DIR_ROOT"
+    sudo cp HackNerdFont-*.ttf "$FONT_DIR_ROOT/"
+    sudo chown -R root:root "$FONT_DIR_ROOT"
+
+    # Cleanup
+    cd /tmp && rm -rf hack_font Hack.zip
+
+    log_ok "Hack Nerd Font instalada (Regular, Bold, Italic, BoldItalic)"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 6 — Instalar entorno para usuario normal
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 6/10 — Entorno de $USER"
+
+# ─── 6a. Kitty ───────────────────────────────────────────────────────────────
+log_info "Kitty..."
+if [ -d "$HOME/.local/kitty.app" ]; then
+    log_ok "Kitty ya instalada para $USER"
+else
+    log_info "Instalando Kitty via installer oficial..."
+    curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n
+fi
+
+# Symlinks Kitty
+mkdir -p "$HOME/.local/bin"
+ln -sf "$HOME/.local/kitty.app/bin/kitty" "$HOME/.local/bin/kitty"
+ln -sf "$HOME/.local/kitty.app/bin/kitten" "$HOME/.local/bin/kitten"
+
+# Desktop file Kitty
+mkdir -p "$HOME/.local/share/applications"
+if [ -f "$HOME/.local/kitty.app/share/applications/kitty.desktop" ]; then
+    cp "$HOME/.local/kitty.app/share/applications/kitty.desktop" \
+       "$HOME/.local/share/applications/"
+fi
+log_ok "Kitty configurada para $USER"
+
+# ─── 6b. Oh-My-Zsh ──────────────────────────────────────────────────────────
+log_info "Oh-My-Zsh..."
+if [ -d "$HOME/.oh-my-zsh" ]; then
+    log_ok "Oh-My-Zsh ya instalado para $USER"
+else
+    log_info "Instalando Oh-My-Zsh..."
+    RUNZSH=no KEEP_ZSHRC=yes \
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+        "" --unattended
+    log_ok "Oh-My-Zsh instalado para $USER"
+fi
+
+# ─── 6c. Plugins ZSH ────────────────────────────────────────────────────────
+log_info "Plugins ZSH..."
+ZSH_CUSTOM_USER="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+
+if [ ! -d "$ZSH_CUSTOM_USER/plugins/zsh-autosuggestions" ]; then
+    git clone https://github.com/zsh-users/zsh-autosuggestions \
+        "$ZSH_CUSTOM_USER/plugins/zsh-autosuggestions"
+    log_ok "zsh-autosuggestions clonado"
+else
+    log_ok "zsh-autosuggestions ya existe"
+fi
+
+if [ ! -d "$ZSH_CUSTOM_USER/plugins/zsh-syntax-highlighting" ]; then
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+        "$ZSH_CUSTOM_USER/plugins/zsh-syntax-highlighting"
+    log_ok "zsh-syntax-highlighting clonado"
+else
+    log_ok "zsh-syntax-highlighting ya existe"
+fi
+
+# ─── 6d. Powerlevel10k ──────────────────────────────────────────────────────
+log_info "Powerlevel10k..."
+if [ ! -d "$ZSH_CUSTOM_USER/themes/powerlevel10k" ]; then
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+        "$ZSH_CUSTOM_USER/themes/powerlevel10k"
+    log_ok "Powerlevel10k clonado"
+else
+    log_ok "Powerlevel10k ya existe"
+fi
+
+# ─── 6e. Symlink bat → batcat ───────────────────────────────────────────────
+ln -sf /usr/bin/batcat "$HOME/.local/bin/bat"
+log_ok "Symlink bat → batcat"
+
+# ─── 6f. Copiar configs ─────────────────────────────────────────────────────
+log_info "Copiando configuraciones..."
+
+CONFIG_DIRS=(bspwm sxhkd kitty picom polybar rofi)
+for dir in "${CONFIG_DIRS[@]}"; do
+    mkdir -p "$HOME/.config/$dir"
+    # Backup archivos existentes
+    for file in "$DOTFILES_DIR/config/$dir/"*; do
+        [ -f "$file" ] || continue
+        local_name="$HOME/.config/$dir/$(basename "$file")"
+        backup_if_exists "$local_name"
     done
+    cp -r "$DOTFILES_DIR/config/$dir/." "$HOME/.config/$dir/"
+    log_ok "  ~/.config/$dir/"
+done
 
-    print_success "Backup creado en: $BACKUP_DIR"
-}
+# ─── 6g. Copiar scripts de bspwm ────────────────────────────────────────────
+mkdir -p "$HOME/.config/bspwm/scripts"
+cp "$DOTFILES_DIR/scripts/"*.sh "$HOME/.config/bspwm/scripts/"
+log_ok "  ~/.config/bspwm/scripts/"
 
-# ─────────────────────────────────────────
-# Instalar paquetes base
-# ─────────────────────────────────────────
-install_packages() {
-    print_message "Actualizando repositorios..."
-    sudo apt update -qq
+# ─── 6h. Copiar wallpaper ───────────────────────────────────────────────────
+cp "$DOTFILES_DIR/wallpaper/wallpaper.jpg" "$HOME/.config/bspwm/wallpaper.jpg"
+log_ok "  ~/.config/bspwm/wallpaper.jpg"
 
-    # Paquetes instalables via apt
-    PACKAGES=(
-        bspwm sxhkd polybar picom rofi kitty feh zsh bat
-        git curl wget unzip build-essential neovim net-tools
-        libxcb-xinerama0-dev libxcb-icccm4-dev libxcb-randr0-dev
-        libxcb-util0-dev libxcb-ewmh-dev libxcb-keysyms1-dev libxcb-shape0-dev
-    )
+# ─── 6i. Copiar dotfiles de home ────────────────────────────────────────────
+backup_if_exists "$HOME/.zshrc"
+backup_if_exists "$HOME/.p10k.zsh"
+cp "$DOTFILES_DIR/home/.zshrc" "$HOME/.zshrc"
+cp "$DOTFILES_DIR/home/.p10k.zsh" "$HOME/.p10k.zsh"
+log_ok "  ~/.zshrc y ~/.p10k.zsh"
 
-    print_message "Instalando paquetes..."
-    for pkg in "${PACKAGES[@]}"; do
-        if dpkg -s "$pkg" &>/dev/null; then
-            print_success "$pkg ya instalado"
+# ─── 6j. Permisos de ejecución ──────────────────────────────────────────────
+chmod +x "$HOME/.config/bspwm/bspwmrc"
+chmod +x "$HOME/.config/bspwm/scripts/"*.sh
+chmod +x "$HOME/.config/polybar/launch.sh"
+log_ok "Permisos +x aplicados"
+
+# ─── 6k. Crear ~/Pictures ───────────────────────────────────────────────────
+mkdir -p "$HOME/Pictures"
+
+log_ok "Entorno de $USER completado"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 7 — Instalar entorno para root
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 7/10 — Entorno de root"
+
+# ─── 7a. Kitty para root ────────────────────────────────────────────────────
+log_info "Kitty para root..."
+if sudo test -d /root/.local/kitty.app; then
+    log_ok "Kitty ya instalada para root"
+else
+    sudo -H bash -c 'curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n'
+fi
+
+sudo mkdir -p /root/.local/bin
+sudo ln -sf /root/.local/kitty.app/bin/kitty /root/.local/bin/kitty
+sudo ln -sf /root/.local/kitty.app/bin/kitten /root/.local/bin/kitten
+sudo mkdir -p /root/.local/share/applications
+sudo cp /root/.local/kitty.app/share/applications/kitty.desktop \
+    /root/.local/share/applications/ 2>/dev/null || true
+log_ok "Kitty configurada para root"
+
+# ─── 7b. Oh-My-Zsh para root ────────────────────────────────────────────────
+log_info "Oh-My-Zsh para root..."
+if sudo test -d /root/.oh-my-zsh; then
+    log_ok "Oh-My-Zsh ya instalado para root"
+else
+    sudo -H bash -c 'RUNZSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
+    log_ok "Oh-My-Zsh instalado para root"
+fi
+
+# ─── 7c. Plugins ZSH para root ──────────────────────────────────────────────
+log_info "Plugins ZSH para root..."
+ZSH_CUSTOM_ROOT="/root/.oh-my-zsh/custom"
+
+if ! sudo test -d "$ZSH_CUSTOM_ROOT/plugins/zsh-autosuggestions"; then
+    sudo git clone https://github.com/zsh-users/zsh-autosuggestions \
+        "$ZSH_CUSTOM_ROOT/plugins/zsh-autosuggestions"
+    log_ok "zsh-autosuggestions (root)"
+else
+    log_ok "zsh-autosuggestions ya existe (root)"
+fi
+
+if ! sudo test -d "$ZSH_CUSTOM_ROOT/plugins/zsh-syntax-highlighting"; then
+    sudo git clone https://github.com/zsh-users/zsh-syntax-highlighting \
+        "$ZSH_CUSTOM_ROOT/plugins/zsh-syntax-highlighting"
+    log_ok "zsh-syntax-highlighting (root)"
+else
+    log_ok "zsh-syntax-highlighting ya existe (root)"
+fi
+
+# ─── 7d. Powerlevel10k para root ────────────────────────────────────────────
+log_info "Powerlevel10k para root..."
+if ! sudo test -d "$ZSH_CUSTOM_ROOT/themes/powerlevel10k"; then
+    sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+        "$ZSH_CUSTOM_ROOT/themes/powerlevel10k"
+    log_ok "Powerlevel10k (root)"
+else
+    log_ok "Powerlevel10k ya existe (root)"
+fi
+
+# ─── 7e. Symlink bat para root ──────────────────────────────────────────────
+sudo ln -sf /usr/bin/batcat /root/.local/bin/bat
+
+# ─── 7f. Copiar configs para root ───────────────────────────────────────────
+log_info "Copiando configuraciones para root..."
+
+for dir in "${CONFIG_DIRS[@]}"; do
+    sudo mkdir -p "/root/.config/$dir"
+    sudo cp -r "$DOTFILES_DIR/config/$dir/." "/root/.config/$dir/"
+    log_ok "  /root/.config/$dir/"
+done
+
+# Scripts de bspwm
+sudo mkdir -p /root/.config/bspwm/scripts
+sudo cp "$DOTFILES_DIR/scripts/"*.sh /root/.config/bspwm/scripts/
+log_ok "  /root/.config/bspwm/scripts/"
+
+# Wallpaper
+sudo cp "$DOTFILES_DIR/wallpaper/wallpaper.jpg" /root/.config/bspwm/wallpaper.jpg
+log_ok "  /root/.config/bspwm/wallpaper.jpg"
+
+# Dotfiles de home
+sudo cp "$DOTFILES_DIR/home/.zshrc" /root/.zshrc
+sudo cp "$DOTFILES_DIR/home/.p10k.zsh" /root/.p10k.zsh
+log_ok "  /root/.zshrc y /root/.p10k.zsh"
+
+# ─── 7g. Permisos para root ─────────────────────────────────────────────────
+# Nota: los globs sobre /root/ deben expandirse en contexto de root
+# porque el usuario normal no puede leer /root/
+sudo bash -c 'chmod +x /root/.config/bspwm/bspwmrc /root/.config/bspwm/scripts/*.sh /root/.config/polybar/launch.sh'
+
+# Pictures para root
+sudo mkdir -p /root/Pictures
+
+# Ownership
+sudo chown -R root:root /root/.config /root/.local /root/.oh-my-zsh \
+    /root/.zshrc /root/.p10k.zsh /root/Pictures 2>/dev/null || true
+
+log_ok "Entorno de root completado"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 8 — Archivo de sesión BSPWM
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 8/10 — Sesión BSPWM"
+
+if [ -f /usr/share/xsessions/bspwm.desktop ]; then
+    log_ok "bspwm.desktop ya existe"
+else
+    sudo cp "$DOTFILES_DIR/system/bspwm.desktop" /usr/share/xsessions/bspwm.desktop
+    log_ok "bspwm.desktop creado en /usr/share/xsessions/"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 9 — fc-cache y shell
+# ══════════════════════════════════════════════════════════════════════════════
+
+log_section "PASO 9/10 — Fuentes y shell"
+
+# fc-cache para ambos usuarios
+log_info "Actualizando caché de fuentes..."
+fc-cache -fv "$HOME/.local/share/fonts" 2>/dev/null || true
+sudo fc-cache -fv /root/.local/share/fonts 2>/dev/null || true
+log_ok "Caché de fuentes actualizado"
+
+# Cambiar shell a zsh
+if [ "$SHELL" = "/usr/bin/zsh" ]; then
+    log_ok "Shell de $USER ya es zsh"
+else
+    chsh -s /usr/bin/zsh
+    log_ok "Shell de $USER cambiado a zsh"
+fi
+
+if sudo grep -q "^root:.*:/usr/bin/zsh$" /etc/passwd; then
+    log_ok "Shell de root ya es zsh"
+else
+    sudo chsh -s /usr/bin/zsh root
+    log_ok "Shell de root cambiado a zsh"
+fi
+
+# Detectar VM para el mensaje final + instalar VMware tools si necesario
+IS_VM=false
+VM_TYPE=""
+if systemd-detect-virt --quiet 2>/dev/null; then
+    IS_VM=true
+    VM_TYPE=$(systemd-detect-virt 2>/dev/null || echo "desconocida")
+
+    # Si es VMware, asegurar que open-vm-tools-desktop está instalado
+    # (necesario para copy-paste, drag-and-drop y autoajuste de resolución)
+    if [ "$VM_TYPE" = "vmware" ]; then
+        if dpkg -l open-vm-tools-desktop 2>/dev/null | grep -q "^ii"; then
+            log_ok "open-vm-tools-desktop ya instalado (copy-paste/drag-and-drop)"
         else
-            print_message "Instalando $pkg..."
-            if ! sudo apt install -y "$pkg" >> "$LOG_FILE" 2>&1; then
-                print_warning "No se pudo instalar $pkg, continuando..."
-            fi
-        fi
-    done
-
-    # lsd: no está en repos de Parrot, hay que bajarlo de GitHub
-    install_lsd
-
-    print_success "Paquetes instalados"
-}
-
-# ─────────────────────────────────────────
-# Instalar lsd desde GitHub (no está en repos de Parrot)
-# ─────────────────────────────────────────
-install_lsd() {
-    if command -v lsd &>/dev/null; then
-        print_success "lsd ya instalado"
-        return 0
-    fi
-
-    print_message "Instalando lsd desde GitHub..."
-
-    # Detectar arquitectura
-    ARCH=$(dpkg --print-architecture)
-    LSD_VERSION=$(curl -s https://api.github.com/repos/lsd-rs/lsd/releases/latest \
-        | grep '"tag_name"' | grep -oP '[\d.]+' | head -n1)
-
-    if [ -z "$LSD_VERSION" ]; then
-        print_warning "No se pudo detectar la versión de lsd, intentando con v1.1.5..."
-        LSD_VERSION="1.1.5"
-    fi
-
-    LSD_URL="https://github.com/lsd-rs/lsd/releases/download/v${LSD_VERSION}/lsd_${LSD_VERSION}_${ARCH}.deb"
-
-    cd /tmp
-    if wget -q "$LSD_URL" -O lsd.deb; then
-        sudo dpkg -i lsd.deb >> "$LOG_FILE" 2>&1
-        rm -f lsd.deb
-        print_success "lsd instalado (v$LSD_VERSION)"
-    else
-        print_error "No se pudo descargar lsd. Instálalo manualmente desde: https://github.com/lsd-rs/lsd/releases"
-    fi
-    cd "$DOTFILES_DIR"
-}
-
-# ─────────────────────────────────────────
-# Instalar Oh-My-Zsh
-# ─────────────────────────────────────────
-install_ohmyzsh() {
-    print_message "Instalando Oh-My-Zsh..."
-
-    if [ -d "$USER_HOME/.oh-my-zsh" ]; then
-        print_success "Oh-My-Zsh ya está instalado"
-        return 0
-    fi
-
-    # RUNZSH=no evita que lance zsh al terminar
-    # CHSH=no evita que cambie el shell (lo hacemos nosotros después)
-    # KEEP_ZSHRC=yes evita que sobreescriba el .zshrc que pondremos luego
-    RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c \
-        "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
-        >> "$LOG_FILE" 2>&1
-
-    print_success "Oh-My-Zsh instalado"
-}
-
-# ─────────────────────────────────────────
-# Instalar plugins de ZSH
-# ─────────────────────────────────────────
-install_zsh_plugins() {
-    print_message "Instalando plugins de ZSH..."
-
-    ZSH_CUSTOM="$USER_HOME/.oh-my-zsh/custom"
-
-    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]; then
-        git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions \
-            "$ZSH_CUSTOM/plugins/zsh-autosuggestions" >> "$LOG_FILE" 2>&1
-        print_success "zsh-autosuggestions instalado"
-    else
-        print_success "zsh-autosuggestions ya instalado"
-    fi
-
-    if [ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]; then
-        git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting \
-            "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" >> "$LOG_FILE" 2>&1
-        print_success "zsh-syntax-highlighting instalado"
-    else
-        print_success "zsh-syntax-highlighting ya instalado"
-    fi
-}
-
-# ─────────────────────────────────────────
-# Instalar Powerlevel10k
-# ─────────────────────────────────────────
-install_powerlevel10k() {
-    print_message "Instalando Powerlevel10k..."
-
-    P10K_DIR="$USER_HOME/.oh-my-zsh/custom/themes/powerlevel10k"
-
-    if [ ! -d "$P10K_DIR" ]; then
-        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
-            "$P10K_DIR" >> "$LOG_FILE" 2>&1
-        print_success "Powerlevel10k instalado"
-    else
-        print_success "Powerlevel10k ya instalado"
-    fi
-}
-
-# ─────────────────────────────────────────
-# Instalar Hack Nerd Font
-# ─────────────────────────────────────────
-install_fonts() {
-    print_message "Instalando Hack Nerd Font..."
-
-    FONT_DIR="$USER_HOME/.local/share/fonts"
-    mkdir -p "$FONT_DIR"
-
-    # Buscar específicamente "Hack Nerd Font", no solo "hack"
-    if fc-list | grep -qi "Hack Nerd Font\|HackNerdFont"; then
-        print_success "Hack Nerd Font ya está instalada"
-        return 0
-    fi
-
-    cd /tmp
-    if wget -q https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Hack.zip \
-        -O Hack.zip; then
-        unzip -q Hack.zip -d "$FONT_DIR"
-        rm -f Hack.zip
-        fc-cache -fv > /dev/null 2>&1
-        print_success "Hack Nerd Font instalada"
-    else
-        print_error "No se pudo descargar Hack Nerd Font"
-    fi
-    cd "$DOTFILES_DIR"
-}
-
-# ─────────────────────────────────────────
-# Instalar NvChad
-# ─────────────────────────────────────────
-install_nvchad() {
-    print_message "Instalando NvChad..."
-
-    if [ -d "$USER_HOME/.config/nvim" ] && [ -f "$USER_HOME/.config/nvim/init.lua" ]; then
-        print_success "NvChad ya está instalado"
-        return 0
-    fi
-
-    git clone https://github.com/NvChad/NvChad \
-        "$USER_HOME/.config/nvim" --depth 1 >> "$LOG_FILE" 2>&1
-    print_success "NvChad instalado"
-    print_warning "Recuerda: abre nvim y ejecuta :MasonInstallAll"
-}
-
-# ─────────────────────────────────────────
-# Crear directorios necesarios
-# ─────────────────────────────────────────
-create_directories() {
-    print_message "Creando directorios necesarios..."
-    mkdir -p "$USER_HOME/.config"/{bspwm/scripts,sxhkd,polybar,picom,rofi,kitty}
-    mkdir -p "$USER_HOME/fondos"
-    print_success "Directorios creados"
-}
-
-# ─────────────────────────────────────────
-# Preguntar backend de Picom
-# ─────────────────────────────────────────
-choose_picom_backend() {
-    echo ""
-    echo -e "${YELLOW}╔══════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║   Configuración de Picom (compositor)        ║${NC}"
-    echo -e "${YELLOW}╠══════════════════════════════════════════════╣${NC}"
-    echo -e "${YELLOW}║  1) glx   → Mejor rendimiento (PC físico)   ║${NC}"
-    echo -e "${YELLOW}║  2) xrender → Más compatible (VMs, básico)  ║${NC}"
-    echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"
-    echo ""
-    read -p "¿En qué entorno vas a usar esto? Elige 1 o 2: " -n 1 -r PICOM_CHOICE
-    echo ""
-
-    if [[ "$PICOM_CHOICE" == "2" ]]; then
-        PICOM_BACKEND="xrender"
-        print_success "Backend seleccionado: xrender (compatible)"
-    else
-        PICOM_BACKEND="glx"
-        print_success "Backend seleccionado: glx (rendimiento)"
-    fi
-}
-
-# ─────────────────────────────────────────
-# Copiar configuraciones al sistema
-# Usa cp (NO symlinks) → el usuario puede borrar el repo después
-# ─────────────────────────────────────────
-copy_configs() {
-    print_message "Copiando configuraciones al sistema..."
-
-    # BSPWM
-    if [ -f "$DOTFILES_DIR/config/bspwm/bspwmrc" ]; then
-        # Corregir rutas hardcodeadas SOLO en la copia, no en el repo
-        sed "s|/home/[^/]*/|$USER_HOME/|g" \
-            "$DOTFILES_DIR/config/bspwm/bspwmrc" > "$USER_HOME/.config/bspwm/bspwmrc"
-        chmod +x "$USER_HOME/.config/bspwm/bspwmrc"
-        print_success "bspwmrc copiado"
-    fi
-
-    # Scripts de BSPWM (polybar modules)
-    if [ -d "$DOTFILES_DIR/config/bspwm/scripts" ]; then
-        cp -r "$DOTFILES_DIR/config/bspwm/scripts/"* "$USER_HOME/.config/bspwm/scripts/"
-        chmod +x "$USER_HOME/.config/bspwm/scripts/"*
-        print_success "Scripts de polybar copiados"
-    fi
-
-    # SXHKD
-    if [ -f "$DOTFILES_DIR/config/sxhkd/sxhkdrc" ]; then
-        sed "s|/home/[^/]*/|$USER_HOME/|g" \
-            "$DOTFILES_DIR/config/sxhkd/sxhkdrc" > "$USER_HOME/.config/sxhkd/sxhkdrc"
-        print_success "sxhkdrc copiado"
-    fi
-
-    # Polybar (todos los archivos)
-    if [ -d "$DOTFILES_DIR/config/polybar" ]; then
-        cp -r "$DOTFILES_DIR/config/polybar/"* "$USER_HOME/.config/polybar/"
-        chmod +x "$USER_HOME/.config/polybar/"*.sh 2>/dev/null
-        # Corregir rutas en configs de polybar
-        find "$USER_HOME/.config/polybar" -type f -name "*.ini" -o -name "*.conf" | while read f; do
-            sed -i "s|/home/[^/]*/|$USER_HOME/|g" "$f"
-        done
-        print_success "Polybar copiado"
-    fi
-
-    # Picom (aplicar backend elegido por el usuario)
-    if [ -f "$DOTFILES_DIR/config/picom/picom.conf" ]; then
-        cp "$DOTFILES_DIR/config/picom/picom.conf" "$USER_HOME/.config/picom/picom.conf"
-        # Reemplazar backend según la elección del usuario
-        sed -i "s|^backend = .*|backend = \"$PICOM_BACKEND\";|" "$USER_HOME/.config/picom/picom.conf"
-        print_success "picom.conf copiado (backend: $PICOM_BACKEND)"
-    fi
-
-    # Rofi
-    if [ -f "$DOTFILES_DIR/config/rofi/config.rasi" ]; then
-        cp "$DOTFILES_DIR/config/rofi/config.rasi" "$USER_HOME/.config/rofi/config.rasi"
-        print_success "Rofi config copiado"
-    fi
-    if [ -d "$DOTFILES_DIR/config/rofi/themes" ]; then
-        cp -r "$DOTFILES_DIR/config/rofi/themes" "$USER_HOME/.config/rofi/"
-        print_success "Temas de Rofi copiados"
-    fi
-
-    # Kitty (todos los archivos: kitty.conf, color.ini, etc.)
-    if [ -d "$DOTFILES_DIR/config/kitty" ]; then
-        cp -r "$DOTFILES_DIR/config/kitty/"* "$USER_HOME/.config/kitty/"
-        print_success "Kitty copiado"
-    fi
-
-    # ZSH
-    if [ -f "$DOTFILES_DIR/config/zsh/.zshrc" ]; then
-        cp "$DOTFILES_DIR/config/zsh/.zshrc" "$USER_HOME/.zshrc"
-        print_success ".zshrc copiado"
-    fi
-    if [ -f "$DOTFILES_DIR/config/zsh/.p10k.zsh" ]; then
-        cp "$DOTFILES_DIR/config/zsh/.p10k.zsh" "$USER_HOME/.p10k.zsh"
-        print_success ".p10k.zsh copiado"
-    fi
-
-    # NvChad custom config (solo si hay archivos además del README)
-    if [ -d "$DOTFILES_DIR/config/nvim" ]; then
-        NVIM_FILES=$(find "$DOTFILES_DIR/config/nvim" -type f ! -name "README.md" | wc -l)
-        if [ "$NVIM_FILES" -gt 0 ]; then
-            cp -r "$DOTFILES_DIR/config/nvim/"* "$USER_HOME/.config/nvim/" 2>/dev/null
-            print_success "NvChad custom config copiada"
+            log_info "Instalando open-vm-tools-desktop para VMware..."
+            sudo apt install -y open-vm-tools-desktop
+            log_ok "open-vm-tools-desktop instalado"
         fi
     fi
+fi
 
-    # Wallpapers
-    if [ -d "$DOTFILES_DIR/wallpapers" ]; then
-        find "$DOTFILES_DIR/wallpapers" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" \) \
-            -exec cp {} "$USER_HOME/fondos/" \;
-        print_success "Wallpapers copiados"
-    fi
+# ══════════════════════════════════════════════════════════════════════════════
+#  PASO 10/10 — Verificación final
+# ══════════════════════════════════════════════════════════════════════════════
 
-    print_success "Todas las configuraciones instaladas en el sistema"
-}
+log_section "PASO 10/10 — Verificación"
 
-# ─────────────────────────────────────────
-# Configurar wallpaper en bspwmrc
-# ─────────────────────────────────────────
-setup_wallpaper() {
-    print_message "Configurando wallpaper..."
+ALL_OK=true
 
-    WALLPAPER=$(find "$USER_HOME/fondos" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.jpeg" \) \
-        | head -n1)
+# Añadir ~/.local/bin al PATH para detectar kitty y bat
+export PATH="$HOME/.local/bin:$PATH"
 
-    if [ -z "$WALLPAPER" ]; then
-        print_warning "No se encontró wallpaper en ~/fondos/"
-        return
-    fi
-
-    if ! grep -q "feh --bg-fill" "$USER_HOME/.config/bspwm/bspwmrc" 2>/dev/null; then
-        echo "feh --bg-fill \"$WALLPAPER\" &" >> "$USER_HOME/.config/bspwm/bspwmrc"
-    fi
-
-    [ -n "$DISPLAY" ] && feh --bg-fill "$WALLPAPER"
-
-    print_success "Wallpaper configurado: $(basename $WALLPAPER)"
-}
-
-# ─────────────────────────────────────────
-# Cambiar shell a ZSH
-# ─────────────────────────────────────────
-change_shell() {
-    print_message "Cambiando shell a ZSH..."
-
-    # Usar ruta directa en caso de que PATH no esté refrescado
-    ZSH_PATH=$(command -v zsh || echo "/usr/bin/zsh")
-
-    if [ ! -f "$ZSH_PATH" ]; then
-        print_error "ZSH no encontrado en $ZSH_PATH"
-        return 1
-    fi
-
-    if [ "$SHELL" == "$ZSH_PATH" ]; then
-        print_success "ZSH ya es tu shell"
-        return 0
-    fi
-
-    # chsh puede requerir contraseña en algunos sistemas
-    if chsh -s "$ZSH_PATH" "$CURRENT_USER" 2>/dev/null; then
-        print_success "Shell cambiado a ZSH (cierra sesión para aplicar)"
+# Binarios
+BINS=(bspwm sxhkd picom polybar rofi feh kitty zsh scrot lsd batcat fzf xclip betterlockscreen i3lock)
+for bin in "${BINS[@]}"; do
+    if command -v "$bin" &>/dev/null; then
+        printf "  ${GREEN}✓${NC} %-20s %s\n" "$bin" "$(which $bin)"
     else
-        print_warning "No se pudo cambiar el shell automáticamente."
-        print_warning "Ejecútalo manualmente: chsh -s $ZSH_PATH"
+        printf "  ${RED}✗${NC} %-20s %s\n" "$bin" "NO ENCONTRADO"
+        ALL_OK=false
     fi
-}
+done
 
-# ─────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────
-main() {
-    clear
-    echo -e "${BLUE}"
-    echo "╔══════════════════════════════════════════════╗"
-    echo "║   Instalador de Dotfiles - Parrot OS  v3.0  ║"
-    echo "╚══════════════════════════════════════════════╝"
+# Fuentes (comprobar archivos directamente, fc-list puede no estar actualizado aún)
+echo ""
+if [ -d "$HOME/.local/share/fonts/HackNerdFont" ] && ls "$HOME/.local/share/fonts/HackNerdFont/"*.ttf &>/dev/null; then
+    log_ok "Hack Nerd Font instalada ($(ls $HOME/.local/share/fonts/HackNerdFont/*.ttf | wc -l) archivos)"
+else
+    log_error "Hack Nerd Font NO encontrada en ~/.local/share/fonts/HackNerdFont/"
+    ALL_OK=false
+fi
+
+# Oh-My-Zsh + plugins (usuario)
+DIRS_CHECK=(
+    "$HOME/.oh-my-zsh"
+    "$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+)
+for dir in "${DIRS_CHECK[@]}"; do
+    if [ -d "$dir" ]; then
+        log_ok "$(basename "$dir") ($USER)"
+    else
+        log_error "$(basename "$dir") NO encontrado ($USER)"
+        ALL_OK=false
+    fi
+done
+
+# Configs (usuario)
+CONFIGS_CHECK=(
+    "$HOME/.config/bspwm/bspwmrc"
+    "$HOME/.config/sxhkd/sxhkdrc"
+    "$HOME/.config/kitty/kitty.conf"
+    "$HOME/.config/picom/picom.conf"
+    "$HOME/.config/polybar/config.ini"
+    "$HOME/.config/polybar/launch.sh"
+    "$HOME/.config/rofi/config.rasi"
+    "$HOME/.zshrc"
+    "$HOME/.p10k.zsh"
+)
+for f in "${CONFIGS_CHECK[@]}"; do
+    if [ -f "$f" ]; then
+        log_ok "$(echo "$f" | sed "s|$HOME|~|")"
+    else
+        log_error "$(echo "$f" | sed "s|$HOME|~|") NO encontrado"
+        ALL_OK=false
+    fi
+done
+
+# Session file
+if [ -f /usr/share/xsessions/bspwm.desktop ]; then
+    log_ok "bspwm.desktop"
+else
+    log_error "bspwm.desktop NO encontrado"
+    ALL_OK=false
+fi
+
+# Matar el sudo keepalive
+kill $SUDO_KEEPALIVE_PID 2>/dev/null || true
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Mensaje final
+# ══════════════════════════════════════════════════════════════════════════════
+
+echo ""
+if [ "$ALL_OK" = true ]; then
+    echo -e "${GREEN}${BOLD}"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║              ✓ INSTALACIÓN COMPLETADA                      ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║                                                            ║"
+    echo "║  Pasos manuales después de reiniciar:                      ║"
+    echo "║                                                            ║"
+    echo "║  1. En LightDM, seleccionar sesión \"bspwm\"                 ║"
+    echo "║  2. Abrir un terminal (super + Return) y ejecutar:         ║"
+    echo "║     betterlockscreen -u ~/.config/bspwm/wallpaper.jpg      ║"
+    echo "║     (genera el cache para la pantalla de bloqueo con blur) ║"
+    echo "║                                                            ║"
+    echo "║  Reiniciar ahora:  sudo reboot                             ║"
+    echo "║                                                            ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
-    echo -e "  Usuario:  ${GREEN}$CURRENT_USER${NC}"
-    echo -e "  Home:     ${GREEN}$USER_HOME${NC}"
-    echo -e "  Dotfiles: ${GREEN}$DOTFILES_DIR${NC}"
-    echo -e "  Log:      ${GREEN}$LOG_FILE${NC}"
-    echo ""
-
-    check_not_root
-    check_internet
-    check_parrot
-
-    echo ""
-    echo -e "${YELLOW}╔══════════════════════════════════════════════╗${NC}"
-    echo -e "${YELLOW}║  ⚠️  AVISO IMPORTANTE - PARROT OS            ║${NC}"
-    echo -e "${YELLOW}║  Nunca uses:  sudo apt upgrade               ║${NC}"
-    echo -e "${YELLOW}║  Usa siempre: sudo parrot-upgrade            ║${NC}"
-    echo -e "${YELLOW}╚══════════════════════════════════════════════╝${NC}"
-    echo ""
-    sleep 2
-
-    read -p "$(echo -e ${YELLOW}¿Hacer backup de configs existentes? [S/n]: ${NC})" -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Nn]$ ]] && backup_configs
-
-    choose_picom_backend
-
-    echo ""
-    print_message "Iniciando instalación..."
-    echo ""
-
-    install_packages
-    install_ohmyzsh
-    install_zsh_plugins
-    install_powerlevel10k
-    install_fonts
-    install_nvchad
-    create_directories
-    copy_configs
-    setup_wallpaper
-    change_shell
-
-    echo ""
-    echo -e "${GREEN}"
-    echo "╔══════════════════════════════════════════════╗"
-    echo "║        ¡Instalación completada! 🚀           ║"
-    echo "╚══════════════════════════════════════════════╝"
+else
+    echo -e "${YELLOW}${BOLD}"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║          ⚠ INSTALACIÓN COMPLETADA CON ADVERTENCIAS         ║"
+    echo "╠══════════════════════════════════════════════════════════════╣"
+    echo "║                                                            ║"
+    echo "║  Revisa los errores marcados con ✗ arriba.                 ║"
+    echo "║  El script es re-ejecutable: corrige y vuelve a lanzar.    ║"
+    echo "║                                                            ║"
+    echo "║  Si todo funciona correctamente después de reiniciar:      ║"
+    echo "║  1. En LightDM, seleccionar sesión \"bspwm\"                 ║"
+    echo "║  2. Ejecutar: betterlockscreen -u ~/.config/bspwm/wall...  ║"
+    echo "║                                                            ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
-    print_warning "Pasos finales:"
-    echo "  1. Cierra sesión y vuelve a entrar (para aplicar ZSH)"
-    echo "  2. Selecciona BSPWM como window manager"
-    echo "  3. Abre nvim y ejecuta: :MasonInstallAll"
-    echo "  4. Si quieres reconfigurar p10k: p10k configure"
-    echo ""
-    echo -e "  📋 Log completo en: ${BLUE}$LOG_FILE${NC}"
-    echo ""
-    print_message "¡Disfruta tu entorno! 😎"
-    print_message "Ya puedes borrar la carpeta dotfiles si quieres."
-}
+fi
 
-main
+# Aviso de VM después del cuadro
+if [ "$IS_VM" = true ]; then
+    echo -e "${YELLOW}${BOLD}  ⚠ Máquina virtual detectada: $VM_TYPE${NC}"
+    echo -e "${YELLOW}  Si experimentas lag gráfico, parpadeo o pantalla negra:${NC}"
+    echo -e "${YELLOW}    1. Verifica que la aceleración 3D está activada en la VM${NC}"
+    echo -e "${YELLOW}    2. Asigna un mínimo de 128 MB de VRAM${NC}"
+    echo -e "${YELLOW}    3. Si sigue fallando, cambia en ~/.config/picom/picom.conf:${NC}"
+    echo -e "${YELLOW}       backend = \"glx\";  →  backend = \"xrender\";${NC}"
+    echo ""
+fi

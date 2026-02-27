@@ -1,133 +1,131 @@
-# atajos independientes del gestor de ventanas
-#
+# ~/.config/sxhkd/sxhkdrc
+# Atajos de teclado del entorno BSPWM
 
-# emulador de terminal
+# ─── Aplicaciones ─────────────────────────────────────────────────────────────
+
+# Abrir terminal — ruta absoluta para mayor fiabilidad
 super + Return
-	/opt/kitty/bin/kitty
+    ~/.local/kitty.app/bin/kitty
 
-# lanzador de programas
+# Lanzador de aplicaciones (Rofi — se instalará en Fase 5)
 super + d
-	/usr/bin/rofi -show run
+    /usr/bin/rofi -show drun
 
-# recargar la configuración de sxhkd
-super + Escape
-	pkill -USR1 -x sxhkd
+# Abrir xterm como terminal de emergencia (ya instalado en Fase 0)
+super + shift + Return
+    xterm
 
-#
-# atajos de bspwm
-#
+# ─── BSPWM — Gestión de ventanas ──────────────────────────────────────────────
 
-# salir/reiniciar bspwm
-super + alt + {q,r}
-	bspc {quit,wm -r}
-
-# cerrar y matar ventana
+# Cerrar ventana (c) o matar proceso (k) si no responde
+# _ = sin modificador adicional = cerrar | shift = matar
 super + {_,shift + }w
-	bspc node -{c,k}
+    bspc node -{c,k}
 
-# cerrar ventana (alternativo)
-super + q
-	bspc node -c
-
-# alternar entre diseño en mosaico y monocle
-super + m
-	bspc desktop -l next
-
-# enviar el nodo marcado más reciente al nodo preseleccionado más reciente
-super + y
-	bspc node newest.marked.local -n newest.!automatic.local
-
-# intercambiar el nodo actual con la ventana más grande
-super + g
-	bspc node -s biggest.window
-
-#
-# estado/banderas
-#
-
-# establecer el estado de la ventana
+# Establecer estado de la ventana explícitamente:
+# t=tiling | shift+t=pseudo_tiled | s=floating | f=fullscreen
+# Más preciso que toggles — sabes exactamente a qué estado vas
 super + {t,shift + t,s,f}
-	bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
+    bspc node -t {tiled,pseudo_tiled,floating,fullscreen}
 
-# establecer las banderas del nodo
+# Alternar modo escritorio monocle (una ventana ocupa todo)
+super + m
+    bspc desktop -l next
+
+# ─── BSPWM — Node flags ───────────────────────────────────────────────────────
+# Flags especiales por ventana:
+# m=marked (seleccionada para mover) | x=locked (no se puede cerrar accidentalmente)
+# y=sticky (visible en todos los workspaces) | z=private (no se intercambia)
 super + ctrl + {m,x,y,z}
-	bspc node -g {marked,locked,sticky,private}
+    bspc node -g {marked,locked,sticky,private}
 
-#
-# foco/intercambio
-#
+# ─── BSPWM — Navegación entre ventanas ───────────────────────────────────────
 
-# enfocar el nodo en la dirección dada
-super + {_,shift + }{h,j,k,l}
-	bspc node -{f,s} {west,south,north,east}
+# Mover foco con hjkl (estilo Vim)
+super + {h,j,k,l}
+    bspc node -f {west,south,north,east}
 
-# enfocar el nodo para el salto de ruta dado
-super + {p,b,comma,period}
-	bspc node -f @{parent,brother,first,second}
-
-# enfocar la siguiente/anterior ventana en el escritorio actual
-super + {_,shift + }c
-	bspc node -f {next,prev}.local.!hidden.window
-
-# enfocar el escritorio siguiente/anterior en el monitor actual
-super + bracket{left,right}
-	bspc desktop -f {prev,next}.local
-
-# enfocar el último nodo/escritorio
-super + {grave,Tab}
-	bspc {node,desktop} -f last
-
-# enfocar el nodo más antiguo o más nuevo en el historial de foco
-super + {o,i}
-	bspc wm -h off; \
-	bspc node {older,newer} -f; \
-	bspc wm -h on
-
-# enfocar o enviar al escritorio dado
-super + {_,shift + }{1-9,0}
-	bspc {desktop -f,node -d} '^{1-9,10}'
-
-#
-# preselección
-#
-
-# preseleccionar la dirección
-super + ctrl + {Left,Down,Up,Right}
-	bspc node -p {west,south,north,east}
-
-# preseleccionar la proporción
-super + ctrl + {1-9}
-	bspc node -o 0.{1-9}
-
-# cancelar la preselección para el nodo enfocado
-super + ctrl + space
-	bspc node -p cancel
-
-# cancelar la preselección para el escritorio enfocado
-super + ctrl + shift + space
-	bspc query -N -d | xargs -I id -n 1 bspc node id -p cancel
-
-# ajustar tamaño del preselector
-super + ctrl + alt + {Left,Down,Up,Right}
-	bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0}
-
-#
-# mover/redimensionar
-#
-
-# mover una ventana flotante
+# Mover foco con flechas (más intuitivo)
 super + {Left,Down,Up,Right}
-	bspc node -v {-20 0,0 20,0 -20,20 0}
+    bspc node -f {west,south,north,east}
 
-# redimensionar ventana
+# Siguiente/anterior ventana en el workspace actual
+super + {_,shift + }c
+    bspc node -f {next,prev}.local.!hidden.window
+
+# ─── BSPWM — Mover e intercambiar ventanas ────────────────────────────────────
+
+super + shift + {h,j,k,l}
+    bspc node -s {west,south,north,east}
+
+# Intercambiar ventana actual con la más grande del workspace
+super + g
+    bspc node -s biggest.window
+
+# ─── BSPWM — Redimensionar ventanas ──────────────────────────────────────────
+# Funciona tanto en tiling como en floating
+
 super + alt + {Left,Down,Up,Right}
-	bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0} || \
-	bspc node -z {right -20 0,top 0 20,bottom 0 -20,left 20 0}
+    bspc node -z {left -20 0,bottom 0 20,top 0 -20,right 20 0} || \
+    bspc node -z {right -20 0,top 0 20,bottom 0 -20,left 20 0}
 
-#
-# seguridad
-#
+# ─── BSPWM — Preselección ────────────────────────────────────────────────────
+# Permite elegir DÓNDE se abrirá la siguiente ventana antes de abrirla
+# Muy útil para construir layouts multi-terminal personalizados
+# Uso: Super+Ctrl+dirección → preselecciona zona → abre terminal → aparece ahí
 
-# bloquear pantalla
+# Preseleccionar dirección
+super + ctrl + {Left,Down,Up,Right}
+    bspc node -p {west,south,north,east}
+
+# Ajustar proporción de la preselección (1=10% ... 9=90%)
+super + ctrl + {1-9}
+    bspc node -o 0.{1-9}
+
+# Cancelar preselección de la ventana enfocada
+super + ctrl + space
+    bspc node -p cancel
+
+# Cancelar todas las preselecciones del workspace actual
+super + ctrl + shift + space
+    bspc query -N -d | xargs -I id -n 1 bspc node id -p cancel
+
+# ─── BSPWM — Workspaces ───────────────────────────────────────────────────────
+
+# Ir al workspace N / mover ventana al workspace N
+super + {_,shift + }{1-9}
+    bspc {desktop -f,node -d} '^{1-9}'
+
+# Workspace anterior / siguiente
+super + bracket{left,right}
+    bspc desktop -f {prev,next}.local
+
+# Saltar al último workspace visitado
+super + Tab
+    bspc desktop -f last
+
+# ─── Sistema ──────────────────────────────────────────────────────────────────
+
+# Recargar sxhkd sin reiniciar
+super + Escape
+    pkill -USR1 -x sxhkd
+
+# Salir / reiniciar BSPWM
+super + alt + {q,r}
+    bspc {quit,wm -r}
+
+# Bloquear pantalla
 super + shift + x
-	/usr/bin/i3lock-fancy
+    betterlockscreen -l blur
+
+# Screenshot pantalla completa
+Print
+    scrot '%Y-%m-%d_%H-%M-%S.png' -e 'mv $f ~/Pictures/'
+
+# Screenshot ventana seleccionada
+super + Print
+    scrot -s '%Y-%m-%d_%H-%M-%S.png' -e 'mv $f ~/Pictures/'
+
+# Powermenu
+super + shift + e
+    ~/.config/bspwm/scripts/powermenu.sh

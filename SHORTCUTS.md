@@ -1,150 +1,123 @@
-# 📌 Guía Completa de Atajos de Teclado
+# ⌨️ Guía Completa de Atajos de Teclado
 
-## 🔹 Sistema y Aplicaciones Básicas
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Enter** | Abrir terminal (Kitty) |
-| **Win + D** | Abrir Rofi (lanzador de programas) |
-| **Win + Escape** | Recargar configuración de sxhkd |
-
-## 🔹 Gestión de Ventanas
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Q** | Cerrar ventana |
-| **Win + W** | Cerrar ventana |
-| **Win + Shift + W** | Matar ventana forzosamente |
-| **Win + M** | Alternar entre diseño mosaico y monocle |
-| **Win + G** | Intercambiar ventana actual con la más grande |
-| **Win + Click Izq.** | Mover ventana |
-| **Win + Click Der.** | Redimensionar ventana |
-
-## 🔹 Estados de Ventana
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + T** | Ventana en mosaico (tiled) |
-| **Win + Shift + T** | Ventana pseudo-mosaico |
-| **Win + S** | Ventana flotante (floating) |
-| **Win + F** | Pantalla completa (fullscreen) |
-
-## 🔹 Banderas de Nodo
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Ctrl + M** | Marcar nodo |
-| **Win + Ctrl + X** | Bloquear nodo |
-| **Win + Ctrl + Y** | Nodo pegajoso (sticky) |
-| **Win + Ctrl + Z** | Nodo privado |
-
-## 🔹 Navegación entre Ventanas
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + H** | Enfocar ventana a la izquierda |
-| **Win + J** | Enfocar ventana abajo |
-| **Win + K** | Enfocar ventana arriba |
-| **Win + L** | Enfocar ventana a la derecha |
-| **Win + Shift + H** | Mover ventana a la izquierda |
-| **Win + Shift + J** | Mover ventana abajo |
-| **Win + Shift + K** | Mover ventana arriba |
-| **Win + Shift + L** | Mover ventana a la derecha |
-| **Win + C** | Enfocar siguiente ventana |
-| **Win + Shift + C** | Enfocar ventana anterior |
-| **Win + Tab** | Enfocar último escritorio |
-| **Win + `** | Enfocar último nodo |
-| **Win + O** | Enfocar nodo más antiguo en historial |
-| **Win + I** | Enfocar nodo más nuevo en historial |
-
-## 🔹 Navegación de Rutas
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + P** | Enfocar nodo padre |
-| **Win + B** | Enfocar nodo hermano |
-| **Win + ,** | Enfocar primer nodo |
-| **Win + .** | Enfocar segundo nodo |
-
-## 🔹 Escritorios
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + [1-9,0]** | Ir al escritorio 1-10 |
-| **Win + Shift + [1-9,0]** | Mover ventana al escritorio 1-10 |
-| **Win + [** | Escritorio anterior |
-| **Win + ]** | Escritorio siguiente |
-
-## 🔹 Preselección
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Ctrl + H** | Preseleccionar izquierda |
-| **Win + Ctrl + J** | Preseleccionar abajo |
-| **Win + Ctrl + K** | Preseleccionar arriba |
-| **Win + Ctrl + L** | Preseleccionar derecha |
-| **Win + Ctrl + [1-9]** | Establecer proporción 0.1 - 0.9 |
-| **Win + Ctrl + Space** | Cancelar preselección del nodo |
-| **Win + Ctrl + Shift + Space** | Cancelar preselección del escritorio |
-| **Win + Ctrl + Alt + ⬅** | Ajustar tamaño preselector izquierda |
-| **Win + Ctrl + Alt + ⬇** | Ajustar tamaño preselector abajo |
-| **Win + Ctrl + Alt + ⬆** | Ajustar tamaño preselector arriba |
-| **Win + Ctrl + Alt + ➡** | Ajustar tamaño preselector derecha |
-| **Win + Y** | Enviar nodo marcado a nodo preseleccionado |
-
-## 🔹 Mover/Redimensionar Ventanas
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + ⬅** | Mover ventana flotante izquierda |
-| **Win + ⬇** | Mover ventana flotante abajo |
-| **Win + ⬆** | Mover ventana flotante arriba |
-| **Win + ➡** | Mover ventana flotante derecha |
-| **Win + Alt + ⬅** | Redimensionar ventana izquierda |
-| **Win + Alt + ⬇** | Redimensionar ventana abajo |
-| **Win + Alt + ⬆** | Redimensionar ventana arriba |
-| **Win + Alt + ➡** | Redimensionar ventana derecha |
-
-## 🔹 Sistema BSPWM
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Alt + Q** | Salir de BSPWM |
-| **Win + Alt + R** | Reiniciar BSPWM |
-
-## 🔹 Seguridad
-
-| Atajo | Acción |
-|-------|--------|
-| **Win + Shift + X** | Bloquear pantalla |
-
-## 🔹 Kitty (Gestión de Terminales)
-
-| Atajo | Acción |
-|-------|--------|
-| **Ctrl + Shift + Enter** | Crear split (nueva terminal dentro de Kitty) |
-| **Ctrl + Shift + R** | Redimensionar splits |
-| **Ctrl + Shift + Z** | Zoom en terminal activa |
-| **Ctrl + Shift + T** | Crear nuevo entorno de trabajo |
-| **Ctrl + Shift + Alt + T** | Renombrar entorno de trabajo |
-| **Ctrl + Shift + ⬅** | Ir a entorno de trabajo anterior |
-| **Ctrl + Shift + ➡** | Ir a entorno de trabajo siguiente |
-| **Ctrl + T** | Buscar archivos/rutas |
-| **Ctrl + R** | Buscar en historial de comandos |
-
-## 🔹 Funciones Polybar y Utilidades
-
-| Comando | Acción |
-|---------|--------|
-| **settarget [IP]** | Indicar en polybar la IP seleccionada |
-| **cleartarget** | Limpiar IP indicada en polybar |
-| **creartarget** | Crear un nuevo target |
+Todos los atajos están definidos en `config/sxhkd/sxhkdrc`.  
+**Win** = Tecla Super (Windows/Command)
 
 ---
 
-### 📝 Notas:
-- **Win** = Tecla Super (Windows/Command)
-- **Ctrl** = Control
-- **Shift** = Mayúsculas
-- **Alt** = Alt
-- Los atajos que usan **{opción1,opción2}** indican múltiples combinaciones posibles
+## Aplicaciones
+
+| Atajo | Acción |
+|---|---|
+| **Win + Return** | Abrir terminal (Kitty) |
+| **Win + Shift + Return** | Terminal de emergencia (xterm) |
+| **Win + D** | Launcher de aplicaciones (Rofi) |
+| **Win + Escape** | Recargar configuración de sxhkd |
+
+## Gestión de Ventanas
+
+| Atajo | Acción |
+|---|---|
+| **Win + W** | Cerrar ventana |
+| **Win + Shift + W** | Matar ventana forzosamente |
+| **Win + M** | Alternar modo monocle (una ventana ocupa todo) |
+| **Win + G** | Intercambiar ventana con la más grande |
+
+## Estados de Ventana
+
+| Atajo | Acción |
+|---|---|
+| **Win + T** | Tiling (mosaico) |
+| **Win + Shift + T** | Pseudo-tiling |
+| **Win + S** | Floating (flotante) |
+| **Win + F** | Fullscreen (pantalla completa) |
+
+## Flags de Ventana
+
+| Atajo | Acción |
+|---|---|
+| **Win + Ctrl + M** | Marcar ventana (para mover) |
+| **Win + Ctrl + X** | Bloquear ventana (no se puede cerrar) |
+| **Win + Ctrl + Y** | Sticky (visible en todos los workspaces) |
+| **Win + Ctrl + Z** | Privado (no se intercambia) |
+
+## Navegación entre Ventanas
+
+| Atajo | Acción |
+|---|---|
+| **Win + H / ←** | Enfocar ventana a la izquierda |
+| **Win + J / ↓** | Enfocar ventana abajo |
+| **Win + K / ↑** | Enfocar ventana arriba |
+| **Win + L / →** | Enfocar ventana a la derecha |
+| **Win + Shift + H/J/K/L** | Mover/intercambiar ventana en esa dirección |
+| **Win + C** | Siguiente ventana en el workspace |
+| **Win + Shift + C** | Ventana anterior en el workspace |
+| **Win + Tab** | Último workspace visitado |
+
+## Workspaces
+
+| Atajo | Acción |
+|---|---|
+| **Win + [1-9]** | Ir al workspace N |
+| **Win + Shift + [1-9]** | Mover ventana al workspace N |
+| **Win + [** | Workspace anterior |
+| **Win + ]** | Workspace siguiente |
+
+## Preselección
+
+Permite elegir **dónde** se abrirá la siguiente ventana antes de abrirla.
+
+| Atajo | Acción |
+|---|---|
+| **Win + Ctrl + ←/↓/↑/→** | Preseleccionar dirección |
+| **Win + Ctrl + [1-9]** | Establecer proporción (1=10% ... 9=90%) |
+| **Win + Ctrl + Space** | Cancelar preselección del nodo |
+| **Win + Ctrl + Shift + Space** | Cancelar preselección del escritorio |
+
+## Redimensionar Ventanas
+
+| Atajo | Acción |
+|---|---|
+| **Win + Alt + ←** | Redimensionar hacia la izquierda |
+| **Win + Alt + ↓** | Redimensionar hacia abajo |
+| **Win + Alt + ↑** | Redimensionar hacia arriba |
+| **Win + Alt + →** | Redimensionar hacia la derecha |
+
+## Sistema
+
+| Atajo | Acción |
+|---|---|
+| **Win + Alt + Q** | Salir de BSPWM |
+| **Win + Alt + R** | Reiniciar BSPWM |
+| **Win + Shift + X** | Bloquear pantalla (betterlockscreen) |
+| **Win + Shift + E** | Power menu (apagar/reiniciar/bloquear/salir) |
+| **Print** | Screenshot pantalla completa → `~/Pictures/` |
+| **Win + Print** | Screenshot área seleccionada → `~/Pictures/` |
+
+## Kitty (Terminal)
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + Shift + Enter** | Nuevo split dentro de Kitty |
+| **Ctrl + Shift + R** | Redimensionar splits |
+| **Ctrl + Shift + Z** | Zoom en terminal activa |
+| **Ctrl + Shift + T** | Nueva pestaña |
+| **Ctrl + Shift + Alt + T** | Renombrar pestaña |
+| **Ctrl + Shift + ← / →** | Cambiar de pestaña |
+
+## Atajos ZSH (fzf)
+
+| Atajo | Acción |
+|---|---|
+| **Ctrl + R** | Buscar en historial de comandos |
+| **Ctrl + T** | Buscar archivos/rutas |
+| **Alt + C** | Cambiar de directorio |
+
+## Funciones Custom
+
+| Comando | Acción |
+|---|---|
+| `settarget <IP>` | Establecer target (se muestra en Polybar) |
+| `cleartarget` | Limpiar target |
+| `mkt <nombre>` | Crear directorios para CTF (content/exploits/nmap/scripts) |
+| `extractPorts <file>` | Extraer puertos de nmap y copiar al clipboard |

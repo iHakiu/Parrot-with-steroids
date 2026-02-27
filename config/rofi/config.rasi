@@ -1,1 +1,108 @@
-@theme "/home/user/.config/rofi/themes/squared-material-red.rasi"
+/* ~/.config/rofi/config.rasi */
+/* Configuración completa estilo Dracula - Sin errores ni filas amarillas */
+
+configuration {
+    modi: "drun,run";
+    show-icons: true;
+    /* Asegúrate de tener este tema de iconos o cambia a "Adwaita" */
+    icon-theme: "Papirus-Dark"; 
+    drun-display-format: "{name}";
+    font: "Hack Nerd Font 11";
+    lines: 8;
+    auto-select: false;
+}
+
+/* ─── Definición de variables de color (Dracula) ─── */
+* {
+    drac-bg:    #282a36;  /* Fondo Oscuro */
+    drac-curr:  #44475a;  /* Gris Selección */
+    drac-fg:    #f8f8f2;  /* Texto Blanco */
+    drac-purp:  #bd93f9;  /* Morado Borde */
+    drac-pink:  #ff79c6;  /* Rosa Texto Activo */
+    drac-com:   #6272a4;  /* Gris Comentarios */
+
+    /* Valores globales por defecto */
+    background-color: transparent;
+    text-color:       @drac-fg;
+    border-color:     @drac-purp;
+}
+
+/* ─── Ventana Principal ─── */
+window {
+    width:            35%;
+    border:           2px;
+    border-radius:    12px;
+    background-color: @drac-bg; /* Aquí se aplica el fondo oscuro */
+    location:         center;
+    y-offset:         -100;
+}
+
+mainbox {
+    children: [ inputbar, listview ];
+    spacing:  8px;
+    padding:  12px;
+}
+
+/* ─── Barra de Búsqueda ─── */
+inputbar {
+    background-color: @drac-curr;
+    border-radius:    8px;
+    padding:          8px 12px;
+    children:         [ prompt, entry ];
+    spacing:          8px;
+}
+
+prompt {
+    text-color: @drac-purp;
+    font:       "Hack Nerd Font Bold 11";
+}
+
+entry {
+    placeholder:       "Buscar aplicación...";
+    placeholder-color: @drac-com;
+}
+
+/* ─── Lista de Resultados ─── */
+listview {
+    lines:     8;
+    columns:   1;
+    spacing:   4px;
+    scrollbar: false;
+}
+
+/* ─── Elementos (Filas) ─── */
+element {
+    padding:       6px 10px;
+    spacing:       8px;
+    border-radius: 6px;
+    children:      [ element-icon, element-text ];
+    orientation:   horizontal;
+}
+
+element-icon {
+    size: 24px;
+}
+
+element-text {
+    vertical-align: 0.5;
+}
+
+/* ─── CORRECCIÓN DEL COLOR AMARILLO ─── */
+/* Forzamos a que las filas normales y alternas sean transparentes */
+element normal.normal, element alternate.normal {
+    background-color: transparent;
+    text-color:       @drac-fg;
+}
+
+/* ─── Elemento Seleccionado (Hover) ─── */
+element selected.normal {
+    background-color: @drac-curr;
+    text-color:       @drac-pink;
+    border:           0px 0px 0px 2px; /* Borde fino a la izquierda */
+    border-color:     @drac-purp;
+}
+
+/* Asegurar que el texto se ponga rosa al seleccionar */
+element-text selected {
+    text-color: @drac-pink;
+}
