@@ -35,3 +35,5 @@ secrets/
 !wallpaper/**/*
 !home/**/*
 !system/**/*
+
+fix_p10k_status.sh

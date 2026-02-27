@@ -18,7 +18,7 @@ Configuración completa y automatizada de un entorno de trabajo basado en BSPWM 
 | Lockscreen | **betterlockscreen** | Pantalla de bloqueo con blur (i3lock-color) |
 | CLI | **bat, lsd, fzf** | Cat con colores, ls moderno, fuzzy finder |
 | Fuente | **Hack Nerd Font** | Fuente monospace con iconos Nerd Font |
-| Tema | **Dracula / Catppuccin / Nord** | Paleta mixta según componente |
+| Tema | **Dracula + Catppuccin** | Rofi: Dracula · Kitty: Catppuccin Mocha · Polybar: custom |
 
 ## 🚀 Instalación
 
