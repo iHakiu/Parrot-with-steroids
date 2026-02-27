@@ -1,10 +1,10 @@
-# 🚀 Dotfiles — Entorno BSPWM Pentesting para Parrot OS
+# Entorno BSPWM Pentesting para Parrot OS
 
 Configuración completa y automatizada de un entorno de trabajo basado en BSPWM para Parrot OS, optimizado para pentesting y productividad.
 
 ![Preview](assets/preview.png)
 
-## � ¿Qué incluye?
+## 📦 ¿Qué incluye?
 
 | Componente | Herramienta | Descripción |
 |---|---|---|
@@ -20,7 +20,7 @@ Configuración completa y automatizada de un entorno de trabajo basado en BSPWM 
 | Fuente | **Hack Nerd Font** | Fuente monospace con iconos Nerd Font |
 | Tema | **Dracula / Catppuccin / Nord** | Paleta mixta según componente |
 
-## � Instalación
+## 🚀 Instalación
 
 ```bash
 git clone https://github.com/iHakiu/Parrot-with-steroids.git ~/Dotfiles
@@ -98,7 +98,7 @@ Dotfiles/
 
 📋 **[Lista completa de atajos →](SHORTCUTS.md)**
 
-## �️ Funciones ZSH para Pentesting
+## 🛠️ Funciones ZSH para Pentesting
 
 ```bash
 settarget 10.10.10.123    # Establecer target (aparece en Polybar)
@@ -158,22 +158,6 @@ Si usas VMware/VirtualBox y experimentas lag gráfico:
 | Atajos no funcionan | `killall sxhkd && sxhkd &` |
 | Pantalla negra en VM | Cambiar picom backend a `xrender` |
 | Lockscreen no funciona | `betterlockscreen -u ~/.config/bspwm/wallpaper.jpg` |
-
-## 📸 Screenshots
-
-<details>
-<summary>Click para ver capturas 📷</summary>
-
-### Polybar con Módulos Custom
-![Polybar](assets/screenshots/polybar.png)
-
-### Rofi Launcher
-![Rofi](assets/screenshots/rofi.png)
-
-### Terminal con Powerlevel10k
-![Terminal](assets/screenshots/terminal.png)
-
-</details>
 
 ## 🙏 Créditos
 
